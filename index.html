@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DreamLand Estate — Меллополис</title>
+  <style>
+    /* ================= ОБЩИЕ СТИЛИ ================= */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f2eb; color: #2d2a26; transition: background 0.3s, color 0.3s; }
+    
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 2rem; background: #2d5a4a; color: #fff;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .header a { color: #fff; text-decoration: none; margin-left: 1.5rem; font-weight: 500; cursor: pointer;}
+    .header a:hover { text-decoration: underline; }
+    .logo { font-size: 1.4rem; font-weight: bold; cursor: pointer; user-select: none; }
+    
+    .nav { display: flex; align-items: center; gap: 1rem; }
+    
+    .user-profile {
+      display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2);
+      padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-right: 15px;
+    }
+    .user-profile .avatar { font-size: 1.2rem; }
+    .user-profile .name { color: #ffd166; }
+
+    .wallet {
+      display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2);
+      padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 1.1rem;
+    }
+    .wallet span { color: #ffd166; }
+    .btn-topup { background: #ffd166; color: #2d2a26; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-left: 5px;}
+    .btn-topup:hover { background: #ffb703; }
+    .btn-promo { background: #0ea5e9; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .btn-promo:hover { background: #0284c7; }
+
+    /* ================= ГЛАВНАЯ СТРАНИЦА (КАРТА) ================= */
+    .map-page { padding: 2rem; text-align: center; display: none; }
+    .map-page.active { display: block; }
+    .map-page h1 { margin-bottom: 0.5rem; }
+    .subtitle { color: #666; margin-bottom: 2rem; }
+    
+    .map-wrapper { 
+      position: relative; max-width: 1000px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.15); aspect-ratio: 1016 / 678;
+    }
+    #country-map-img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    #settlements-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+    .map-hitbox {
+      position: absolute; width: 120px; height: 40px; transform: translate(-50%, -50%);
+      cursor: pointer; border-radius: 8px; transition: all 0.3s ease;
+      background: rgba(255, 255, 255, 0.05); border: 2px dashed rgba(255, 255, 255, 0.3);
+    }
+    
+    .map-hitbox:hover {
+      background: rgba(255, 255, 255, 0.3); border: 2px solid #ffd166;
+      box-shadow: 0 0 20px rgba(255, 209, 102, 0.8); transform: translate(-50%, -50%) scale(1.05);
+    }
+
+    .tooltip {
+      position: absolute; pointer-events: none; background: #2d2a26; color: #fff;
+      padding: 0.6rem 0.9rem; border-radius: 8px; font-size: 0.9rem; max-width: 260px; line-height: 1.4;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 20; transform: translate(15px, 15px);
+    }
+    .tooltip.hidden { display: none; }
+
+    /* ================= УНИВЕРСАЛЬНАЯ СТРАНИЦА ГОРОДА ================= */
+    .city-page { padding: 2rem; display: none; max-width: 1200px; margin: 0 auto; }
+    .city-page.active { display: block; }
+    
+    .city-header-panel {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      margin-bottom: 1.5rem;
+    }
+    .back-to-map {
+      background: #444; color: #fff; border: none; padding: 0.6rem 1.2rem;
+      border-radius: 8px; cursor: pointer; transition: background 0.2s; font-weight: bold;
+    }
+    .back-to-map:hover { background: #666; }
+
+    .city-map-wrapper {
+      position: relative; max-width: 1200px; margin: 0 auto; border-radius: 16px; overflow: hidden;
+      border: 2px solid #222;
+    }
+    .city-map-wrapper img { width: 100%; display: block; }
+    
+    /* Темы карт */
+    .city-map-wrapper.theme-gloomy img { filter: brightness(0.8) contrast(1.1); }
+    .city-map-wrapper.theme-gloomy { box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+    .city-map-wrapper.theme-bright img { filter: brightness(1.05) contrast(1.05); }
+    .city-map-wrapper.theme-bright { box-shadow: 0 8px 32px rgba(0, 180, 255, 0.3); border-color: #00aaff; }
+    .city-map-wrapper.theme-village img { filter: brightness(1.05) contrast(1.05); }
+    .city-map-wrapper.theme-village { box-shadow: 0 8px 32px rgba(100, 150, 50, 0.3); border-color: #8a7a5c; }
+    .city-map-wrapper.theme-farm img { filter: brightness(1.05) contrast(1.05); }
+    .city-map-wrapper.theme-farm { box-shadow: 0 8px 32px rgba(139, 69, 19, 0.3); border-color: #cd853f; }
+    .city-map-wrapper.theme-wine img { filter: brightness(1.05) contrast(1.05); }
+    .city-map-wrapper.theme-wine { box-shadow: 0 8px 32px rgba(128, 0, 32, 0.3); border-color: #8b0000; }
+    .city-map-wrapper.theme-forest img { filter: brightness(1.05) contrast(1.05); }
+    .city-map-wrapper.theme-forest { box-shadow: 0 8px 32px rgba(34, 139, 34, 0.3); border-color: #228b22; }
+    .city-map-wrapper.theme-military img { filter: brightness(0.95) contrast(1.1) sepia(0.1); }
+    .city-map-wrapper.theme-military { box-shadow: 0 8px 32px rgba(107, 142, 35, 0.4); border-color: #6b8e23; }
+
+    /* Зоны домов */
+    .building-zone {
+      position: absolute; cursor: pointer; transition: all 0.3s ease;
+      background: rgba(255, 200, 100, 0.1); border: 2px dashed rgba(255, 200, 100, 0.6);
+      border-radius: 8px; box-shadow: 0 0 10px rgba(255, 200, 100, 0.2);
+      display: flex; justify-content: center; align-items: center;
+    }
+    
+    .building-zone:hover {
+      background: rgba(255, 200, 100, 0.4); border: 2px solid rgba(255, 200, 100, 1);
+      box-shadow: 0 0 30px rgba(255, 200, 100, 0.9), inset 0 0 20px rgba(255, 200, 100, 0.5);
+      z-index: 5; transform: scale(1.05);
+    }
+
+    .building-zone .zone-number {
+      color: #ffd166; font-weight: bold; font-size: 1.2rem;
+      text-shadow: 0 0 5px #000, 0 0 10px #000; pointer-events: none; 
+      opacity: 0.6; transition: opacity 0.2s, transform 0.2s;
+    }
+    
+    .building-zone:hover .zone-number { opacity: 1; transform: scale(1.2); }
+
+    /* ================= СТРАНИЦА ДОМА (КВАРТИРЫ) ================= */
+    .house-page { padding: 2rem; display: none; max-width: 1200px; margin: 0 auto; }
+    .house-page.active { display: block; }
+
+    .house-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem;
+    }
+    
+    /* Шапки тем */
+    .house-header.theme-gloomy { background: #222; border: 1px solid #444; color: #ddd; }
+    .house-header.theme-gloomy h1 { color: #ffd166; }
+    .house-header.theme-gloomy p { color: #aaa; }
+    .house-header.theme-bright { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; }
+    .house-header.theme-bright h1 { color: #0284c7; }
+    .house-header.theme-bright p { color: #0369a1; }
+    .house-header.theme-village { background: #fdfbf7; border: 1px solid #e2d9c8; color: #5c4a3d; }
+    .house-header.theme-village h1 { color: #8a7a5c; }
+    .house-header.theme-village p { color: #7a6a5c; }
+    .house-header.theme-farm { background: #fff8f0; border: 1px solid #f5deb3; color: #8b4513; }
+    .house-header.theme-farm h1 { color: #d2691e; }
+    .house-header.theme-farm p { color: #a0522d; }
+    .house-header.theme-wine { background: #fff0f5; border: 1px solid #f5c2c7; color: #8b0000; }
+    .house-header.theme-wine h1 { color: #8b0000; }
+    .house-header.theme-wine p { color: #a52a2a; }
+    .house-header.theme-forest { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .house-header.theme-forest h1 { color: #15803d; }
+    .house-header.theme-forest p { color: #166534; }
+    .house-header.theme-military { background: #f7fee7; border: 1px solid #d9f99d; color: #3f6212; }
+    .house-header.theme-military h1 { color: #4d7c0f; }
+    .house-header.theme-military p { color: #3f6212; }
+
+    .back-btn {
+      background: #444; color: #fff; border: none; padding: 0.6rem 1.2rem;
+      border-radius: 8px; cursor: pointer; transition: background 0.2s;
+    }
+    .back-btn:hover { background: #666; }
+    .house-header.theme-bright .back-btn { background: #0284c7; }
+    .house-header.theme-bright .back-btn:hover { background: #0369a1; }
+    .house-header.theme-village .back-btn { background: #8a7a5c; }
+    .house-header.theme-village .back-btn:hover { background: #6b5b3c; }
+    .house-header.theme-farm .back-btn { background: #d2691e; }
+    .house-header.theme-farm .back-btn:hover { background: #a0522d; }
+    .house-header.theme-wine .back-btn { background: #8b0000; }
+    .house-header.theme-wine .back-btn:hover { background: #a52a2a; }
+    .house-header.theme-forest .back-btn { background: #15803d; }
+    .house-header.theme-forest .back-btn:hover { background: #166534; }
+    .house-header.theme-military .back-btn { background: #4d7c0f; }
+    .house-header.theme-military .back-btn:hover { background: #3f6212; }
+
+    .flats-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem;
+    }
+    
+    /* Карточки тем */
+    .flat-card.theme-gloomy { background: #333; border-radius: 12px; padding: 1rem; color: #ddd; border: 1px solid #555; transition: transform 0.2s, border-color 0.2s; display: flex; flex-direction: column; position: relative; }
+    .flat-card.theme-gloomy:hover { transform: translateY(-4px); border-color: #ffd166; }
+    .flat-card.theme-gloomy h3 { color: #fff; font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .flat-card.theme-gloomy .price { font-size: 1.2rem; font-weight: bold; color: #ffd166; margin-bottom: 0.8rem; }
+    .flat-card.theme-gloomy .desc { font-size: 0.9rem; color: #999; margin-bottom: 1rem; flex-grow: 1; }
+    .flat-card.theme-gloomy .btn { background: #6b3a3a; color: #fff; border: none; padding: 0.6rem; border-radius: 8px; cursor: pointer; transition: background 0.2s; width: 100%; }
+    .flat-card.theme-gloomy .btn:hover { background: #8a4a4a; }
+    
+    /* Стили для купленных */
+    .flat-card.sold { opacity: 0.7; }
+    .sold-badge {
+      background: #ff4d4d; color: white; padding: 0.6rem; border-radius: 8px;
+      text-align: center; font-weight: bold; font-size: 0.9rem; width: 100%;
+      cursor: not-allowed; box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+    }
+
+    .flat-card.theme-bright { background: #fff; border-radius: 12px; padding: 1rem; color: #333; border: 1px solid #e2e8f0; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; }
+    .flat-card.theme-bright:hover { transform: translateY(-4px); border-color: #38bdf8; box-shadow: 0 8px 20px rgba(56, 189, 248, 0.2); }
+    .flat-card.theme-bright h3 { color: #0f172a; font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .flat-card.theme-bright .price { font-size: 1.2rem; font-weight: bold; color: #0284c7; margin-bottom: 0.8rem; }
+    .flat-card.theme-bright .desc { font-size: 0.9rem; color: #64748b; margin-bottom: 1rem; flex-grow: 1; }
+    .flat-card.theme-bright .btn { background: #0ea5e9; color: #fff; border: none; padding: 0.6rem; border-radius: 8px; cursor: pointer; transition: background 0.2s; width: 100%; font-weight: bold; }
+    .flat-card.theme-bright .btn:hover { background: #0284c7; }
+
+    .flat-card.theme-village { background: #fdfbf7; border-radius: 12px; padding: 1.5rem; color: #333; border: 1px solid #e2d9c8; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(0,0,0,0.05); max-width: 400px; margin: 0 auto; position: relative; }
+    .flat-card.theme-village:hover { transform: translateY(-4px); border-color: #8a7a5c; box-shadow: 0 8px 20px rgba(138, 122, 92, 0.2); }
+    .flat-card.theme-village h3 { color: #4a3a2a; font-size: 1.3rem; margin-bottom: 0.5rem; }
+    .flat-card.theme-village .price { font-size: 1.4rem; font-weight: bold; color: #5c8a3d; margin-bottom: 1rem; }
+    .flat-card.theme-village .desc { font-size: 0.95rem; color: #6b5b3c; margin-bottom: 1.5rem; flex-grow: 1; line-height: 1.5; }
+    .flat-card.theme-village .btn { background: #6b8e23; color: #fff; border: none; padding: 0.8rem; border-radius: 8px; cursor: pointer; transition: background 0.2s; width: 100%; font-weight: bold; font-size: 1rem; }
+    .flat-card.theme-village .btn:hover { background: #556b2f; }
+
+    .flat-card.theme-farm { background: #fff8f0; border-radius: 12px; padding: 1.5rem; color: #333; border: 1px solid #f5deb3; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(0,0,0,0.05); max-width: 400px; margin: 0 auto; position: relative; }
+    .flat-card.theme-farm:hover { transform: translateY(-4px); border-color: #d2691e; box-shadow: 0 8px 20px rgba(210, 105, 30, 0.2); }
+    .flat-card.theme-farm h3 { color: #8b4513; font-size: 1.3rem; margin-bottom: 0.5rem; }
+    .flat-card.theme-farm .price { font-size: 1.4rem; font-weight: bold; color: #d2691e; margin-bottom: 1rem; }
+    .flat-card.theme-farm .desc { font-size: 0.95rem; color: #a0522d; margin-bottom: 1.5rem; flex-grow: 1; line-height: 1.5; }
+    .flat-card.theme-farm .btn { background: #cd853f; color: #fff; border: none; padding: 0.8rem; border-radius: 8px; cursor: pointer; transition: background 0.2s; width: 100%; font-weight: bold; font-size: 1rem; }
+    .flat-card.theme-farm .btn:hover { background: #8b4513; }
+
+    .flat-card.theme-wine { background: #fff0f5; border-radius: 12px; padding: 1.5rem; color: #333; border: 1px solid #f5c2c7; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(0,0,0,0.05); max-width: 400px; margin: 0 auto; position: relative; }
+    .flat-card.theme-wine:hover { transform: translateY(-4px); border-color: #8b0000; box-shadow: 0 8px 20px rgba(139, 0, 0, 0.2); }
+    .flat-card.theme-wine h3 { color: #8b0000; font-size: 1.3rem; margin-bottom: 0.5rem; }
+    .flat-card.theme-wine .price { font-size: 1.4rem; font-weight: bold; color: #a52a2a; margin-bottom: 1rem; }
+    .flat-card.theme-wine .desc { font-size: 0.95rem; color: #8b0000; margin-bottom: 1.5rem; flex-grow: 1; line-height: 1.5; }
+    .flat-card.theme-wine .btn { background: #8b0000; color: #fff; border: none; padding: 0.8rem; border-radius: 8px; cursor: pointer; transition: background 0.2s; width: 100%; font-weight: bold; font-size: 1rem; }
+    .flat-card.theme-wine .btn:hover { background: #a52a2a; }
+
+    .flat-card.theme-forest { background: #f0fdf4; border-radius: 12px; padding: 1.5rem; color: #333; border: 1px solid #bbf7d0; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(0,0,0,0.05); max-width: 400px; margin: 0 auto; position: relative; }
+    .flat-card.theme-forest:hover { transform: translateY(-4px); border-color: #15803d; box-shadow: 0 8px 20px rgba(21, 128, 61, 0.2); }
+    .flat-card.theme-forest h3 { color: #166534; font-size: 1.3rem; margin-bottom: 0.5rem; }
+    .flat-card.theme-forest .price { font-size: 1.4rem; font-weight: bold; color: #15803d; margin-bottom: 1rem; }
+    .flat-card.theme-forest .desc { font-size: 0.95rem; color: #166534; margin-bottom: 1.5rem; flex-grow: 1; line-height: 1.5; }
+    .flat-card.theme-forest .btn { background: #228b22; color: #fff; border: none; padding: 0.8rem; border-radius: 8px; cursor: pointer; transition: background 0.2s; width: 100%; font-weight: bold; font-size: 1rem; }
+    .flat-card.theme-forest .btn:hover { background: #166534; }
+
+    .flat-card.theme-military { background: #f7fee7; border-radius: 12px; padding: 1rem; color: #333; border: 1px solid #d9f99d; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative; }
+    .flat-card.theme-military:hover { transform: translateY(-4px); border-color: #4d7c0f; box-shadow: 0 8px 20px rgba(77, 124, 15, 0.2); }
+    .flat-card.theme-military h3 { color: #3f6212; font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .flat-card.theme-military .price { font-size: 1.2rem; font-weight: bold; color: #4d7c0f; margin-bottom: 0.8rem; }
+    .flat-card.theme-military .desc { font-size: 0.9rem; color: #3f6212; margin-bottom: 1rem; flex-grow: 1; }
+    .flat-card.theme-military .btn { background: #4d7c0f; color: #fff; border: none; padding: 0.6rem; border-radius: 8px; cursor: pointer; transition: background 0.2s; width: 100%; font-weight: bold; }
+    .flat-card.theme-military .btn:hover { background: #3f6212; }
+
+    .badge { display: inline-block; font-size: 0.75rem; padding: 2px 8px; border-radius: 6px; margin-bottom: 0.5rem; color: #fff; font-weight: bold; }
+    .badge--ruin { background: #8a3a3a; }
+    .badge--damage { background: #8a7a3a; }
+    .badge--bare { background: #555; }
+    .badge--luxury { background: #0ea5e9; }
+    .badge--elite { background: #6b8e23; }
+    .badge--farm { background: #cd853f; }
+    .badge--business { background: #8b4513; }
+    .badge--wine { background: #8b0000; }
+    .badge--forest { background: #228b22; }
+    .badge--military { background: #4d7c0f; }
+
+    /* ================= СТРАНИЦА МОИ ВЛАДЕНИЯ ================= */
+    .properties-page { padding: 2rem; display: none; max-width: 1200px; margin: 0 auto; }
+    .properties-page.active { display: block; }
+    
+    .properties-list {
+      display: flex; flex-direction: column; gap: 1rem;
+    }
+    .property-item {
+      background: #fff; border-radius: 12px; padding: 1.5rem;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 5px solid #2d5a4a;
+    }
+    .property-info h3 { margin-bottom: 0.5rem; color: #2d2a26; }
+    .property-info p { color: #666; font-size: 0.9rem; }
+    .property-price { font-weight: bold; color: #2d5a4a; font-size: 1.2rem; }
+    
+    /* Стили для налогов */
+    .tax-badge { font-size: 0.8rem; padding: 2px 6px; border-radius: 4px; background: #ff4d4d; color: white; margin-left: 10px; vertical-align: middle; }
+    .tax-info { font-size: 0.8rem; color: #999; margin-top: 5px; display: block; }
+    .empty-msg { text-align: center; color: #888; padding: 3rem; font-size: 1.1rem; }
+
+    /* ================= СТРАНИЦА ЛИДЕРБОРДА ================= */
+    .leaderboard-page { padding: 2rem; display: none; max-width: 1200px; margin: 0 auto; }
+    .leaderboard-page.active { display: block; }
+    
+    .leaderboard-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem;
+    }
+    .leader-card {
+      background: #fff; border-radius: 16px; overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .leader-card h3 {
+      background: #2d5a4a; color: #fff; padding: 1rem; margin: 0;
+      font-size: 1.2rem; text-align: center;
+    }
+    .leader-list { padding: 1rem; }
+    .leader-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.8rem; border-bottom: 1px solid #eee;
+    }
+    .leader-item:last-child { border-bottom: none; }
+    .leader-item.top-1 { background: #fff8e1; border-radius: 8px; font-weight: bold; }
+    .leader-name { display: flex; align-items: center; gap: 10px; }
+    .leader-name span { font-size: 1.2rem; }
+    .leader-score { color: #2d5a4a; font-weight: bold; }
+
+    /* ================= МОДАЛЬНЫЕ ОКНА ================= */
+    .modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: flex; justify-content: center; align-items: center; z-index: 100;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .modal.visible { opacity: 1; pointer-events: auto; }
+    .modal-content {
+      background: #fff; padding: 2rem; border-radius: 16px;
+      width: 90%; max-width: 400px; text-align: center;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      transform: translateY(20px); transition: transform 0.3s;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal.visible .modal-content { transform: translateY(0); }
+    
+    .modal h2 { margin-bottom: 1rem; color: #2d2a26; }
+    .modal p { margin-bottom: 1.5rem; color: #666; line-height: 1.5; }
+    
+    .modal-input {
+      width: 100%; padding: 10px; margin-bottom: 1rem; border: 2px solid #ccc;
+      border-radius: 8px; font-size: 1.2rem; text-align: center; font-weight: bold;
+    }
+    
+    .modal-label {
+      display: flex; align-items: flex-start; gap: 10px; text-align: left;
+      font-size: 0.85rem; color: #444; margin-bottom: 1.5rem; cursor: pointer;
+    }
+    .modal-label input { margin-top: 3px; cursor: pointer; }
+    
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-btn {
+      flex: 1; padding: 0.8rem; border: none; border-radius: 8px;
+      font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s;
+    }
+    .modal-btn.cancel { background: #eee; color: #333; }
+    .modal-btn.cancel:hover { background: #ddd; }
+    .modal-btn.confirm { background: #2d5a4a; color: #fff; }
+    .modal-btn.confirm:hover { background: #234438; }
+    .modal-btn.confirm:disabled { background: #aaa; cursor: not-allowed; }
+
+    /* ================= ТЕМЫ ФОНА ================= */
+    body.theme-gloomy { background: #2a2a2a; color: #ddd; }
+    body.theme-gloomy .header { background: #1a1a1a; }
+    body.theme-bright { background: #f0f9ff; color: #0f172a; }
+    body.theme-bright .header { background: #0284c7; }
+    body.theme-village { background: #f7f4eb; color: #4a3a2a; }
+    body.theme-village .header { background: #6b8e23; }
+    body.theme-farm { background: #fdf5e6; color: #5c3a21; }
+    body.theme-farm .header { background: #cd853f; }
+    body.theme-wine { background: #fff0f5; color: #5c1a1a; }
+    body.theme-wine .header { background: #8b0000; }
+    body.theme-forest { background: #f0fdf4; color: #14532d; }
+    body.theme-forest .header { background: #228b22; }
+    body.theme-military { background: #f7fee7; color: #2b3a1a; }
+    body.theme-military .header { background: #4d7c0f; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="logo">🏝️ DreamLand Estate</div>
+    <nav class="nav">
+      <a href="#" onclick="location.hash = ''; return false;">Карта</a>
+      <a href="#" onclick="location.hash = 'my-properties'; return false;">Собственность</a>
+      <a href="#" onclick="location.hash = 'leaderboard'; return false;">Лидеры</a>
+    </nav>
+    
+    <div style="display: flex; align-items: center;">
+      <div class="user-profile" id="user-profile" style="display: none;">
+        <span class="avatar">👤</span>
+        <span class="name" id="user-name-display">Игрок</span>
+        <button onclick="openNicknameModal()" style="background:none; border:none; color:#fff; cursor:pointer; margin-left:5px; font-size:0.8rem;" title="Сменить ник">✎</button>
+      </div>
+      
+      <div class="wallet">
+        <span id="wallet-balance">1000</span> DLC
+        <button class="btn-promo" onclick="openPromoModal()">🎟️ Промокод</button>
+        <button class="btn-topup" onclick="openTopupModal()">+</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ГЛАВНАЯ КАРТА -->
+  <main id="page-map" class="map-page active">
+    <h1>Карта Меллополиса</h1>
+    <p class="subtitle">Нажми на булавку, чтобы посмотреть недвижимость</p>
+    <div class="map-wrapper">
+      <img id="country-map-img" src="map.jpg" alt="Карта Меллополиса">
+      <div id="settlements-layer"></div>
+      <div id="tooltip" class="tooltip hidden"></div>
+    </div>
+  </main>
+
+  <!-- УНИВЕРСАЛЬНАЯ КАРТА ГОРОДА -->
+  <main id="page-city" class="city-page">
+    <div class="city-header-panel">
+      <div>
+        <h1 id="city-title" style="margin-bottom: 0.5rem;"></h1>
+        <p id="city-subtitle" class="subtitle" style="margin-bottom: 0;"></p>
+      </div>
+      <button class="back-to-map" onclick="location.hash = ''">← На карту Меллополиса</button>
+    </div>
+    <div id="city-map-wrapper" class="city-map-wrapper">
+      <img id="city-bg-img" src="" alt="Карта города">
+      <div id="buildings-layer"></div>
+    </div>
+  </main>
+
+  <!-- СТРАНИЦА ДОМА (КВАРТИРЫ) -->
+  <main id="page-house" class="house-page">
+    <div id="house-header" class="house-header">
+      <div>
+        <h1 id="house-title">Дом</h1>
+        <p id="house-desc">Описание дома</p>
+      </div>
+      <button id="back-btn" class="back-btn">← Назад к карте</button>
+    </div>
+    <div id="flats-grid" class="flats-grid"></div>
+  </main>
+
+  <!-- СТРАНИЦА "СОБСТВЕННОСТЬ В МЕЛЛОПОЛИСЕ" -->
+  <main id="page-my-properties" class="properties-page">
+    <h1>Собственность в Меллополисе</h1>
+    <p class="subtitle">Здесь отображается всё, что вы приобрели в этой вселенной</p>
+    <div id="my-properties-list" class="properties-list"></div>
+  </main>
+
+  <!-- СТРАНИЦА ЛИДЕРБОРДА -->
+  <main id="page-leaderboard" class="leaderboard-page">
+    <h1>Лидеры по количеству объектов</h1>
+    <p class="subtitle">Кто владеет наибольшим числом недвижимости в каждом поселении?</p>
+    <div id="leaderboard-container" class="leaderboard-grid"></div>
+  </main>
+
+  <!-- МОДАЛКА: НИКНЕЙМ -->
+  <div id="nickname-modal" class="modal">
+    <div class="modal-content">
+      <h2>Добро пожаловать в Меллополис!</h2>
+      <p>Придумайте свой никнейм для игры. <br><span style="font-size:0.8rem; color:#999;">(Запрещены нецензурные и аморальные имена. Смена ника — 20 DLC)</span></p>
+      <input type="text" id="nickname-input" class="modal-input" placeholder="Ваш ник..." maxlength="20">
+      <div class="modal-actions">
+        <button class="modal-btn confirm" onclick="saveNickname()">Продолжить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: ПРОМОКОД -->
+  <div id="promo-modal" class="modal">
+    <div class="modal-content">
+      <h2>Активация промокода</h2>
+      <p>Введите код, полученный после оплаты.</p>
+      <input type="text" id="promo-input" class="modal-input" placeholder="DLC-XXXX-XXXX" style="text-transform: uppercase;">
+      <div class="modal-actions">
+        <button class="modal-btn cancel" onclick="closeModal('promo-modal')">Отмена</button>
+        <button class="modal-btn confirm" onclick="activatePromo()">Активировать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: ПОПОЛНЕНИЕ -->
+  <div id="topup-modal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+      <h2>Пополнение кошелька DLC</h2>
+      <p>Выберите пакет для пополнения.<br><span style="font-size:0.8rem; color:#999;">(Демо-режим: реальные деньги не списываются)</span></p>
+      
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.5rem;">
+        <button class="modal-btn confirm" style="background: #f0f0f0; color: #333; border: 2px solid #ddd; text-align: left; display: flex; justify-content: space-between; padding: 15px;" onclick="fakeTopup(100)">
+          <span>💵 100 DLC</span> <span>100 руб.</span>
+        </button>
+        <button class="modal-btn confirm" style="background: #e0f2fe; color: #0369a1; border: 2px solid #bae6fd; text-align: left; display: flex; justify-content: space-between; padding: 15px;" onclick="fakeTopup(550)">
+          <span>💵 550 DLC</span> <span>500 руб. <b style="color:#ff4d4d; font-size:0.8rem;">+10%</b></span>
+        </button>
+        <button class="modal-btn confirm" style="background: #fdf5e6; color: #8b4513; border: 2px solid #f5deb3; text-align: left; display: flex; justify-content: space-between; padding: 15px;" onclick="fakeTopup(1200)">
+          <span>💵 1200 DLC</span> <span>1000 руб. <b style="color:#ff4d4d; font-size:0.8rem;">+20%</b></span>
+        </button>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-btn cancel" onclick="closeModal('topup-modal')">Отмена</button>
+      </div>
+      <p style="font-size: 0.7rem; margin-top: 1rem; color: #999;">
+        Нажимая «Купить», вы соглашаетесь с условиями оферты. DLC является внутриигровой валютой и не подлежит обмену на реальные деньги.
+      </p>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: ПОКУПКА -->
+  <div id="buy-modal" class="modal">
+    <div class="modal-content">
+      <h2 id="buy-title">Покупка</h2>
+      <p id="buy-desc">Вы уверены, что хотите купить этот объект?</p>
+      
+      <label class="modal-label">
+        <input type="checkbox" id="buy-agree" onchange="toggleBuyBtn()">
+        <span>Я подтверждаю, что приобретаю <strong>цифровой товар</strong> в игре, согласен с офертой, и понимаю, что возврат денежных средств за купленный и использованный игровой объект невозможен.</span>
+      </label>
+
+      <div class="modal-actions">
+        <button class="modal-btn cancel" onclick="closeModal('buy-modal')">Отмена</button>
+        <button id="buy-confirm-btn" class="modal-btn confirm" disabled onclick="confirmPurchase()">Купить</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ================= СТОП-СЛОВА =================
+    const BANNED_WORDS = [
+      'гитлер', 'hitler', 'нацист', 'nazi', 'фашист', 'fascist', 
+      'сталин', 'stalin', 'полпот', 'polpot', 'муссолини', 'mussolini',
+      'пидарас', 'пидор', 'хуй', 'пизда', 'блядь', 'сука', 'ебать', 
+      'fuck', 'shit', 'cunt', 'nigger', 'niga', 'faggot'
+    ];
+
+    const TAKEN_NICKNAMES = ['Игрок_777', 'Меллстрой_Инвест', 'Админ', 'МегаИнвестор', 'ГлаваМурино'];
+
+    // ================= ЭКОНОМИКА =================
+    let balance = 1000; 
+    let myProperties = []; 
+    let soldFlats = []; 
+    let currentBuyingItem = null; 
+    let playerNickname = '';
+    
+    // Промокоды (база для проверки)
+    let promoDatabase = []; 
+
+    // Загрузка данных
+    if (localStorage.getItem('dlc_balance')) balance = parseInt(localStorage.getItem('dlc_balance'));
+    if (localStorage.getItem('dlc_my_properties')) myProperties = JSON.parse(localStorage.getItem('dlc_my_properties'));
+    if (localStorage.getItem('dlc_sold_flats')) soldFlats = JSON.parse(localStorage.getItem('dlc_sold_flats'));
+    if (localStorage.getItem('dlc_nickname')) playerNickname = localStorage.getItem('dlc_nickname');
+    if (localStorage.getItem('dlc_promos')) promoDatabase = JSON.parse(localStorage.getItem('dlc_promos'));
+
+    // Проверка ника при загрузке
+    if (!playerNickname) {
+      document.getElementById('nickname-modal').classList.add('visible');
+    } else {
+      document.getElementById('user-profile').style.display = 'flex';
+      document.getElementById('user-name-display').textContent = playerNickname;
+    }
+
+    // ================= СИСТЕМА НАЛОГОВ =================
+    function checkTaxes() {
+      const now = Date.now();
+      const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000; // 30 дней в миллисекундах
+      let taxMessage = "";
+      let totalTax = 0;
+
+      myProperties.forEach(prop => {
+        if (!prop.lastTaxPaid) {
+          prop.lastTaxPaid = prop.buyDate || now; // Если нет даты, ставим текущую
+        }
+
+        const timePassed = now - prop.lastTaxPaid;
+        
+        if (timePassed > thirtyDaysInMs) {
+          // Прошло больше 30 дней, нужно списать налог
+          if (balance >= 75) {
+            balance -= 75;
+            prop.lastTaxPaid = now; // Обновляем дату
+            totalTax += 75;
+            taxMessage += `Списано 75 DLC за квартиру "${prop.name}".\n`;
+          } else {
+            // Не хватает денег — помечаем как заложенную
+            prop.isMortgaged = true;
+            taxMessage += `ВНИМАНИЕ: Квартира "${prop.name}" заложена! Не хватает 75 DLC на налог.\n`;
+          }
+        }
+      });
+
+      if (totalTax > 0) {
+        updateWallet();
+        saveProperties();
+        alert(`Налог на недвижимость:\n${taxMessage}\nВаш баланс: ${balance} DLC.`);
+      } else if (taxMessage) {
+        saveProperties();
+        alert(taxMessage);
+      }
+    }
+
+    // Запускаем проверку налогов при загрузке (с небольшой задержкой)
+    setTimeout(checkTaxes, 1000);
+
+    function savePromos() {
+      localStorage.setItem('dlc_promos', JSON.stringify(promoDatabase));
+    }
+
+    // ================= ПРОМОКОДЫ (АКТИВАЦИЯ) =================
+    function openPromoModal() {
+      document.getElementById('promo-input').value = '';
+      document.getElementById('promo-modal').classList.add('visible');
+    }
+
+    function activatePromo() {
+      const input = document.getElementById('promo-input').value.trim().toUpperCase();
+      if (!input) return;
+
+      const promo = promoDatabase.find(p => p.code === input && !p.used);
+      
+      if (!promo) {
+        alert("Неверный или уже использованный промокод.");
+        return;
+      }
+
+      promo.used = true;
+      savePromos();
+
+      balance += promo.amount;
+      updateWallet();
+      closeModal('promo-modal');
+      alert(`Успешно! Вам начислено ${promo.amount} DLC.`);
+    }
+
+    // ================= ОСТАЛЬНОЕ =================
+    function openNicknameModal() {
+      document.getElementById('nickname-input').value = playerNickname;
+      document.getElementById('nickname-modal').classList.add('visible');
+    }
+
+    function saveNickname() {
+      const input = document.getElementById('nickname-input').value.trim();
+      
+      if (input.length < 2) {
+        alert("Никнейм должен содержать хотя бы 2 символа.");
+        return;
+      }
+
+      const lowerInput = input.toLowerCase();
+      const isFirstTime = !playerNickname;
+
+      const isBanned = BANNED_WORDS.some(word => lowerInput.includes(word));
+      if (isBanned) {
+        alert("Этот никнейм нарушает правила сообщества. Пожалуйста, выберите другой.");
+        return;
+      }
+
+      if (playerNickname.toLowerCase() !== lowerInput) {
+        const isTaken = TAKEN_NICKNAMES.some(nick => nick.toLowerCase() === lowerInput);
+        if (isTaken) {
+          alert("Этот никнейм уже занят другим игроком. Пожалуйста, выберите другой.");
+          return;
+        }
+      }
+
+      if (!isFirstTime) {
+        if (playerNickname.toLowerCase() === lowerInput) {
+            closeModal('nickname-modal');
+            return;
+        }
+        
+        if (balance < 20) {
+          alert(`Для смены никнейма нужно 20 DLC. У вас на балансе ${balance} DLC.`);
+          openTopupModal(); 
+          return;
+        }
+        
+        balance -= 20;
+        updateWallet();
+        alert("Списано 20 DLC за смену никнейма.");
+      }
+
+      playerNickname = input;
+      localStorage.setItem('dlc_nickname', playerNickname);
+      
+      document.getElementById('user-profile').style.display = 'flex';
+      document.getElementById('user-name-display').textContent = playerNickname;
+      closeModal('nickname-modal');
+      
+      if (location.hash === 'leaderboard') renderLeaderboard();
+    }
+
+    function updateWallet() {
+      document.getElementById('wallet-balance').textContent = balance;
+      localStorage.setItem('dlc_balance', balance);
+    }
+
+    function saveProperties() {
+      localStorage.setItem('dlc_my_properties', JSON.stringify(myProperties));
+      localStorage.setItem('dlc_sold_flats', JSON.stringify(soldFlats));
+    }
+
+    // ================= ДАННЫЕ =================
+    function generateMurinoFlats(buildingId) {
+      const flats = [];
+      const conditions = [
+        { key: 'ruin', label: 'Руина', mult: 0.25 },
+        { key: 'damage', label: 'Требует ремонта', mult: 0.55 },
+        { key: 'bare', label: 'Без отделки', mult: 0.8 },
+      ];
+      for (let i = 1; i <= 25; i++) {
+        const floor = Math.ceil(i / 2);
+        const cond = conditions[floor > 10 ? 0 : floor > 5 ? 1 : 2];
+        flats.push({ id: `${buildingId}-${i}`, number: i, floor, name: `Кв. ${i} (${floor} этаж)`, condition: cond.label, conditionKey: cond.key, price: 500, desc: `Состояние: ${cond.label.toLowerCase()}. Окна во двор.` });
+      }
+      return flats;
+    }
+
+    function generateMytishchiFlats(buildingId) {
+      const flats = [];
+      for (let i = 1; i <= 35; i++) {
+        const floor = Math.ceil(i / 2);
+        flats.push({ id: `${buildingId}-${i}`, number: i, floor, name: `Апартаменты ${i} (${floor} этаж)`, condition: 'Люкс', conditionKey: 'luxury', price: 1000, desc: `Панорамные окна, вид на море, умный дом.` });
+      }
+      return flats;
+    }
+
+    function generateEldzheevkaHouse(buildingId) {
+      return [{ id: `${buildingId}-1`, number: 1, floor: 2, name: `Коттедж целиком`, condition: 'Элитный', conditionKey: 'elite', price: 1500, desc: `Полностью меблированный двухэтажный дом с участком, бассейном и гаражом.` }];
+    }
+
+    function generateMolochnoeFlat(buildingId, type = 'house') {
+      let name, desc, price, condKey, condition;
+      if (type === 'house') { name = `Дом целиком`; desc = `Уютный деревенский дом с печкой.`; price = 300; condKey = 'farm'; condition = 'Деревенский'; }
+      else if (type === 'shop') { name = `Магазин «Таврия»`; desc = `Готовый бизнес!`; price = 800; condKey = 'business'; condition = 'Бизнес'; }
+      else if (type === 'shop2') { name = `Магазин «Интерпол»`; desc = `Готовый бизнес!`; price = 700; condKey = 'business'; condition = 'Бизнес'; }
+      else if (type === 'gas') { name = `Заправка`; desc = `Готовая АЗС.`; price = 1000; condKey = 'business'; condition = 'Бизнес'; }
+      return [{ id: `${buildingId}-1`, number: 1, floor: 1, name, condition, conditionKey: condKey, price, desc }];
+    }
+
+    function generateChekushkinoHouse(buildingId) {
+      return [{ id: `${buildingId}-1`, number: 1, floor: 2, name: `Каменный дом целиком`, condition: 'Винодельческий', conditionKey: 'wine', price: 1200, desc: `Аутентичный каменный дом.` }];
+    }
+
+    function generateDerevnyaHouse(buildingId) {
+      return [{ id: `${buildingId}-1`, number: 1, floor: 2, name: `Деревянный дом целиком`, condition: 'Лесной', conditionKey: 'forest', price: 600, desc: `Уютный деревянный дом у реки.` }];
+    }
+
+    function generateMilitaryBeds(buildingId) {
+      const beds = [];
+      for (let i = 1; i <= 500; i++) { // <--- УВЕЛИЧЕНО ДО 500
+        beds.push({ id: `${buildingId}-${i}`, number: i, floor: Math.ceil(i / 50), name: `Место №${i}`, condition: 'Казарменное', conditionKey: 'military', price: 50, desc: `Спальное место в казарме.` });
+      }
+      return beds;
+    }
+
+    const citiesData = {
+      murino: {
+        name: 'Мурино', subtitle: 'Все дома подсвечены. Нажми на рамку, чтобы открыть квартиры.',
+        theme: 'gloomy', img: 'murino.jpg', buildingsCount: 20, generateFlats: generateMurinoFlats,
+        zones: [
+          { id: 'b1', x: 8, y: 80, w: 8, h: 10 }, { id: 'b2', x: 37.5, y: 15, w: 8, h: 10 }, { id: 'b3', x: 55, y: 12, w: 8, h: 10 }, { id: 'b4', x: 77, y: 18, w: 8, h: 10 },
+          { id: 'b5', x: 22, y: 30, w: 8, h: 10 }, { id: 'b6', x: 42, y: 33.5, w: 8, h: 10 }, { id: 'b13', x: 55, y: 31, w: 8, h: 10 }, { id: 'b7', x: 68, y: 29, w: 8, h: 10 }, 
+          { id: 'b8', x: 82, y: 38, w: 8, h: 10 }, { id: 'b9', x: 16.5, y: 45, w: 8, h: 10 }, { id: 'b10', x: 33, y: 42, w: 8, h: 10 }, { id: 'b11', x: 48, y: 52, w: 8, h: 10 }, 
+          { id: 'b12', x: 70, y: 47, w: 8, h: 10 }, { id: 'b14', x: 18, y: 65, w: 8, h: 10 }, { id: 'b15', x: 31, y: 60, w: 8, h: 10 }, { id: 'b16', x: 60, y: 62, w: 8, h: 10 }, 
+          { id: 'b17', x: 82, y: 62, w: 8, h: 10 }, { id: 'b18', x: 28, y: 85, w: 8, h: 10 }, { id: 'b19', x: 50, y: 78, w: 8, h: 10 }, { id: 'b20', x: 75, y: 78, w: 8, h: 10 }
+        ]
+      },
+      mytishchi: {
+        name: 'Мытищи', subtitle: 'Райский уголок. Нажми на небоскрёб, чтобы увидеть апартаменты.',
+        theme: 'bright', img: 'mytishchi.jpg', buildingsCount: 7, generateFlats: generateMytishchiFlats,
+        zones: [
+          { id: 'm1', x: 11.5, y: 11.5, w: 6.5, h: 19 }, { id: 'm2', x: 22.5, y: 12.5, w: 6.5, h: 19 }, { id: 'm3', x: 42, y: 11.5, w: 8.5, h: 23 },
+          { id: 'm4', x: 64.5, y: 27.5, w: 7.5, h: 18 }, { id: 'm5', x: 83, y: 40.5, w: 7, h: 18 }, { id: 'm6', x: 32.9, y: 57, w: 9, h: 13 }, { id: 'm7', x: 68, y: 68, w: 9.5, h: 14 }
+        ]
+      },
+      eldzheevka: {
+        name: 'Элджеевка', subtitle: 'Элитный коттеджный посёлок. Нажми на дом, чтобы купить его.',
+        theme: 'village', img: 'eldzheevka.jpg', buildingsCount: 9, generateFlats: generateEldzheevkaHouse,
+        zones: [
+          { id: 'e1', x: 17, y: 24, w: 10, h: 10 }, { id: 'e2', x: 38, y: 16, w: 10, h: 11 }, { id: 'e3', x: 56, y: 12, w: 11, h: 12 },
+          { id: 'e4', x: 74, y: 25, w: 10, h: 11 }, { id: 'e5', x: 61, y: 34, w: 9, h: 9 }, { id: 'e6', x: 84, y: 53, w: 10, h: 10 },
+          { id: 'e7', x: 66, y: 57, w: 11, h: 10 }, { id: 'e8', x: 48, y: 64, w: 14, h: 13 }, { id: 'e9', x: 32, y: 76, w: 13, h: 13 }
+        ]
+      },
+      molochnoe: {
+        name: 'Молочное', subtitle: 'Деревенское село. 6 зданий, в каждом 1 вариант покупки.',
+        theme: 'farm', img: 'molochnoe.jpg', buildingsCount: 6, generateFlats: generateMolochnoeFlat,
+        zones: [
+          { id: 'f1', x: 15, y: 35, w: 12, h: 15, type: 'house' }, { id: 'f2', x: 45, y: 10, w: 12, h: 15, type: 'house' },
+          { id: 'f3', x: 72, y: 35, w: 12, h: 15, type: 'house' }, { id: 'f4', x: 29, y: 55, w: 12, h: 15, type: 'house' },
+          { id: 'f6', x: 40, y: 40, w: 15, h: 12, type: 'shop' }, { id: 'f8', x: 25, y: 75, w: 15, h: 12, type: 'gas' }
+        ]
+      },
+      chekushkino: {
+        name: 'Чекушкино', subtitle: 'Винодельческое село. 9 каменных домов.',
+        theme: 'wine', img: 'chekushkino.jpg', buildingsCount: 9, generateFlats: generateChekushkinoHouse,
+        zones: [
+          { id: 'c1', x: 36, y: 4.5, w: 9, h: 11 }, { id: 'c2', x: 20, y: 23, w: 9, h: 10 }, { id: 'c3', x: 7,  y: 41, w: 9, h: 10 },
+          { id: 'c4', x: 18, y: 49, w: 9, h: 11 }, { id: 'c5', x: 29, y: 61, w: 8, h: 9 }, { id: 'c6', x: 72, y: 25, w: 9, h: 11 },
+          { id: 'c7', x: 64, y: 40, w: 10, h: 10 }, { id: 'c8', x: 45, y: 18, w: 9, h: 11 }, { id: 'c9', x: 32, y: 33, w: 10, h: 10 }
+        ]
+      },
+      derevnya: {
+        name: 'Деревня', subtitle: 'Лесная деревня. 5 деревянных домов у реки.',
+        theme: 'forest', img: 'derevnya.jpg', buildingsCount: 5, generateFlats: generateDerevnyaHouse,
+        zones: [
+          { id: 'd1', x: 22, y: 55, w: 12, h: 15 }, { id: 'd2', x: 42, y: 38, w: 12, h: 15 }, { id: 'd3', x: 60, y: 16, w: 11, h: 13 },
+          { id: 'd4', x: 78, y: 28, w: 11, h: 13 }, { id: 'd5', x: 52, y: 65, w: 15, h: 16 }
+        ]
+      },
+      military: {
+        name: 'Воинская часть', subtitle: 'Режимный объект. 2 казармы по 500 мест.',
+        theme: 'military', img: 'military.jpg', buildingsCount: 2, generateFlats: generateMilitaryBeds,
+        zones: [
+          { id: 'v1', x: 15, y: 20, w: 30, h: 25 }, { id: 'v2', x: 45, y: 45, w: 40, h: 30 }
+        ]
+      }
+    };
+
+    Object.keys(citiesData).forEach(key => {
+      const city = citiesData[key];
+      city.houses = [];
+      
+      if (key === 'molochnoe') {
+        city.zones.forEach(zone => {
+          city.houses.push({
+            id: zone.id,
+            name: zone.type === 'house' ? `Жилой дом` : (zone.type === 'shop' ? 'Магазин «Таврия»' : (zone.type === 'shop2' ? 'Магазин «Интерпол»' : 'Заправка')),
+            desc: `Объект недвижимости в селе Молочное.`,
+            flats: city.generateFlats(zone.id, zone.type)
+          });
+        });
+      } else {
+        const prefix = city.zones[0].id.replace(/\d/g, ''); 
+        for (let i = 1; i <= city.buildingsCount; i++) {
+          let houseName = '';
+          if (key === 'murino') houseName = `Высотка ${i}`;
+          else if (key === 'mytishchi') houseName = `Небоскрёб ${i}`;
+          else if (key === 'eldzheevka') houseName = `Коттедж ${i}`;
+          else if (key === 'chekushkino') houseName = `Каменный дом ${i}`;
+          else if (key === 'derevnya') houseName = `Деревянный дом ${i}`;
+          else if (key === 'military') houseName = `Казарма ${i}`;
+
+          city.houses.push({
+            id: `${prefix}${i}`, 
+            name: houseName,
+            desc: key === 'military' ? 'Военный объект. Строгий режим.' : `Объект недвижимости.`,
+            flats: city.generateFlats(`${prefix}${i}`)
+          });
+        }
+      }
+    });
+
+    const settlements = [
+      { id: 'murino', name: 'Мурино', type: 'city', coords: { x: 26, y: 29.5 }, color: '#4a4a4a', icon: '🏚️', population: 25000, description: 'Город-спутник, застроенный заброшенными высотками.', theme: 'gloomy' },
+      { id: 'mytishchi', name: 'Мытищи', type: 'city', coords: { x: 62.1, y: 15 }, color: '#00aaff', icon: '🏙️', population: 150000, description: 'Футуристический центр с идеальной чистотой.', theme: 'bright' },
+      { id: 'military', name: 'Воинская часть', type: 'village', coords: { x: 88, y: 45 }, color: '#6a7a5a', icon: '🎖️', population: 5000, description: 'Закрытый военный городок.', theme: 'military' },
+      { id: 'derevnya', name: 'Деревня', type: 'hamlet', coords: { x: 94, y: 57 }, color: '#8a7a5c', icon: '🏡', population: 800, description: 'Тихая деревня с огородами.', theme: 'forest' },
+      { id: 'molochnoe', name: 'Молочное', type: 'village', coords: { x: 45, y: 57.5 }, color: '#d4b872', icon: '🥛', population: 3000, description: 'Фермерское село, известное сыроварнями.', theme: 'farm' },
+      { id: 'eldzheevka', name: 'Элджеевка', type: 'village', coords: { x: 71.2, y: 69.7 }, color: '#a67c5c', icon: '🍏', population: 1500, description: 'Живописное элитное село у реки.', theme: 'village' },
+      { id: 'chekushkino', name: 'Чекушкино', type: 'village', coords: { x: 86.5, y: 84 }, color: '#5a9e4a', icon: '🍷', population: 1200, description: 'Весёлое село с виноградниками.', theme: 'wine' }
+    ];
+
+    const layer = document.getElementById('settlements-layer');
+    const tooltip = document.getElementById('tooltip');
+    const mapWrapper = document.querySelector('.map-wrapper');
+
+    settlements.forEach(s => {
+      const hitbox = document.createElement('div');
+      hitbox.className = 'map-hitbox';
+      hitbox.style.left = `${s.coords.x}%`;
+      hitbox.style.top = `${s.coords.y}%`;
+
+      hitbox.addEventListener('mouseenter', () => {
+        const typeName = { city: 'Город', village: 'Село', hamlet: 'Деревня' }[s.type];
+        tooltip.innerHTML = `<strong>${s.name}</strong><br>${typeName} · ${s.population.toLocaleString('ru')} жителей<br><em>${s.description}</em>`;
+        tooltip.classList.remove('hidden');
+      });
+      hitbox.addEventListener('mousemove', (e) => {
+        const rect = mapWrapper.getBoundingClientRect();
+        tooltip.style.left = (e.clientX - rect.left) + 'px';
+        tooltip.style.top  = (e.clientY - rect.top) + 'px';
+      });
+      hitbox.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+      hitbox.addEventListener('click', () => { location.hash = s.id; });
+
+      layer.appendChild(hitbox);
+    });
+
+    function router() {
+      const hash = location.hash.replace('#', '');
+      document.body.className = ''; 
+      
+      document.getElementById('page-map').classList.remove('active');
+      document.getElementById('page-city').classList.remove('active');
+      document.getElementById('page-house').classList.remove('active');
+      document.getElementById('page-my-properties').classList.remove('active');
+      document.getElementById('page-leaderboard').classList.remove('active');
+
+      if (hash === 'my-properties') {
+        document.getElementById('page-my-properties').classList.add('active');
+        renderMyProperties();
+        window.scrollTo(0, 0);
+        return;
+      }
+
+      if (hash === 'leaderboard') {
+        document.getElementById('page-leaderboard').classList.add('active');
+        renderLeaderboard();
+        window.scrollTo(0, 0);
+        return;
+      }
+
+      if (citiesData[hash]) {
+        const city = citiesData[hash];
+        document.body.classList.add(`theme-${city.theme}`);
+        document.getElementById('page-city').classList.add('active');
+        
+        document.getElementById('city-title').textContent = city.name;
+        
+        const themeColors = {
+          gloomy: '#ffd166', bright: '#0284c7', village: '#6b8e23',
+          farm: '#d2691e', wine: '#8b0000', forest: '#15803d', military: '#4d7c0f'
+        };
+        document.getElementById('city-title').style.color = themeColors[city.theme] || '#333';
+        document.getElementById('city-subtitle').textContent = city.subtitle;
+        
+        const wrapper = document.getElementById('city-map-wrapper');
+        wrapper.className = `city-map-wrapper theme-${city.theme}`;
+        document.getElementById('city-bg-img').src = city.img;
+
+        renderCityMap(city, hash);
+        window.scrollTo(0, 0);
+
+      } else if (hash.startsWith('house/')) {
+        const parts = hash.split('/');
+        const cityId = parts[1];
+        const houseId = parts[2];
+        const city = citiesData[cityId];
+        
+        if (city) {
+          document.body.classList.add(`theme-${city.theme}`);
+          document.getElementById('page-house').classList.add('active');
+          
+          const header = document.getElementById('house-header');
+          header.className = `house-header theme-${city.theme}`;
+          
+          document.getElementById('back-btn').onclick = () => location.hash = cityId;
+          
+          renderHouse(city, houseId); 
+          window.scrollTo(0, 0);
+        } else {
+          location.hash = ''; 
+        }
+      } else {
+        document.getElementById('page-map').classList.add('active');
+        window.scrollTo(0, 0);
+      }
+    }
+
+    function renderCityMap(city, cityId) {
+      const layer = document.getElementById('buildings-layer');
+      layer.innerHTML = '';
+
+      city.zones.forEach(zone => {
+        const div = document.createElement('div');
+        div.className = 'building-zone';
+        div.style.left = `${zone.x}%`;
+        div.style.top = `${zone.y}%`;
+        div.style.width = `${zone.w}%`;
+        div.style.height = `${zone.h}%`;
+        
+        const span = document.createElement('span');
+        span.className = 'zone-number';
+        span.textContent = zone.id.replace(/[a-z]/g, '');
+        div.appendChild(span);
+
+        div.addEventListener('click', () => {
+          location.hash = `house/${cityId}/${zone.id}`; 
+        });
+
+        layer.appendChild(div);
+      });
+    }
+
+    function renderHouse(city, buildingId) {
+      const house = city.houses.find(h => h.id === buildingId);
+      
+      if (!house) {
+        document.getElementById('house-title').textContent = "Объект не найден";
+        document.getElementById('house-desc').textContent = "Проверьте правильность ссылки.";
+        document.getElementById('flats-grid').innerHTML = '<p>Такого дома нет.</p>';
+        return;
+      }
+
+      document.getElementById('house-title').textContent = house.name;
+      document.getElementById('house-desc').textContent = house.desc;
+
+      const grid = document.getElementById('flats-grid');
+      grid.innerHTML = '';
+
+      house.flats.forEach(flat => {
+        const card = document.createElement('div');
+        const isSold = soldFlats.includes(flat.id);
+        
+        card.className = `flat-card theme-${city.theme} ${isSold ? 'sold' : ''}`;
+        
+        const badgeClass = `badge--${flat.conditionKey}`;
+        
+        const actionHtml = isSold 
+          ? `<div class="sold-badge">🔒 Продано (Владелец: Вы)</div>`
+          : `<button class="btn" onclick="openBuyModal('${city.img}', '${flat.id}', '${flat.name}', ${flat.price}, '${city.name}', '${house.name}')">Купить</button>`;
+
+        card.innerHTML = `
+          <h3>${flat.name}</h3>
+          <span class="badge ${badgeClass}">${flat.condition}</span>
+          <p class="desc">${flat.desc}</p>
+          <p class="price">${flat.price.toLocaleString('ru')} DLC</p>
+          ${actionHtml}
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function renderMyProperties() {
+      const list = document.getElementById('my-properties-list');
+      list.innerHTML = '';
+
+      if (myProperties.length === 0) {
+        list.innerHTML = '<div class="empty-msg">У вас пока нет недвижимости в Меллополисе. Купите что-нибудь на карте!</div>';
+        return;
+      }
+
+      myProperties.forEach(prop => {
+        const item = document.createElement('div');
+        item.className = 'property-item';
+        item.style.borderLeftColor = prop.isMortgaged ? '#ff4d4d' : '#2d5a4a';
+        
+        let statusHtml = '';
+        if (prop.isMortgaged) {
+          statusHtml = '<span class="tax-badge">ЗАЛОЖЕНА</span>';
+        }
+
+        // Считаем время до следующего налога
+        const lastPaid = prop.lastTaxPaid || Date.now();
+        const nextTaxDate = new Date(lastPaid + 30 * 24 * 60 * 60 * 1000);
+        
+        item.innerHTML = `
+          <div class="property-info">
+            <h3>${prop.name} ${statusHtml}</h3>
+            <p>${prop.cityName} · ${prop.houseName}</p>
+            <span class="tax-info">Следующий налог: ${nextTaxDate.toLocaleDateString('ru-RU')}</span>
+          </div>
+          <div class="property-price">${prop.price} DLC</div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function renderLeaderboard() {
+      const container = document.getElementById('leaderboard-container');
+      container.innerHTML = '';
+
+      const userStats = {};
+      myProperties.forEach(p => {
+        if (!userStats[p.cityName]) userStats[p.cityName] = 0;
+        userStats[p.cityName]++;
+      });
+
+      Object.values(citiesData).forEach(city => {
+        const card = document.createElement('div');
+        card.className = 'leader-card';
+        
+        let players = [
+          { name: playerNickname || 'Вы', count: userStats[city.name] || 0, icon: '👤' },
+          { name: 'Игрок_777', count: Math.floor(Math.random() * 10) + 5, icon: '🤖' },
+          { name: 'Меллстрой_Инвест', count: Math.floor(Math.random() * 15) + 10, icon: '🏢' }
+        ];
+
+        players.sort((a, b) => b.count - a.count);
+
+        let listHTML = '';
+        players.forEach((p, index) => {
+          const rank = index + 1;
+          const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+          const topClass = rank === 1 ? 'top-1' : '';
+          
+          listHTML += `
+            <div class="leader-item ${topClass}">
+              <div class="leader-name">
+                <span>${medal} ${p.icon}</span> ${p.name}
+              </div>
+              <div class="leader-score">${p.count} об.</div>
+            </div>
+          `;
+        });
+
+        card.innerHTML = `
+          <h3>${city.name}</h3>
+          <div class="leader-list">${listHTML}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function openTopupModal() {
+      document.getElementById('topup-modal').classList.add('visible');
+    }
+
+    function fakeTopup(amount) {
+      balance += amount;
+      updateWallet();
+      closeModal('topup-modal');
+      alert(`Успешно пополнено на ${amount} DLC!\n\n(В реальной версии здесь произошла бы оплата через ЮKassa или Telegram)`);
+    }
+
+    function openBuyModal(cityImg, flatId, flatName, price, cityName, houseName) {
+      if (balance < price) {
+        alert(`Недостаточно средств! Вам нужно ${price} DLC, а у вас ${balance} DLC.`);
+        openTopupModal();
+        return;
+      }
+
+      currentBuyingItem = { 
+        id: flatId, 
+        price: price, 
+        name: flatName, 
+        cityName: cityName, 
+        houseName: houseName,
+        buyDate: Date.now(),
+        lastTaxPaid: Date.now()
+      };
+      
+      document.getElementById('buy-title').textContent = `Покупка: ${flatName}`;
+      document.getElementById('buy-desc').innerHTML = `Город: ${cityName}<br>Стоимость: <strong>${price} DLC</strong>`;
+      
+      document.getElementById('buy-agree').checked = false;
+      document.getElementById('buy-confirm-btn').disabled = true;
+      
+      document.getElementById('buy-modal').classList.add('visible');
+    }
+
+    function toggleBuyBtn() {
+      const isChecked = document.getElementById('buy-agree').checked;
+      document.getElementById('buy-confirm-btn').disabled = !isChecked;
+    }
+
+    function confirmPurchase() {
+      if (!currentBuyingItem) return;
+      
+      if (balance >= currentBuyingItem.price) {
+        balance -= currentBuyingItem.price;
+        updateWallet();
+        
+        myProperties.push(currentBuyingItem);
+        soldFlats.push(currentBuyingItem.id);
+        saveProperties();
+
+        closeModal('buy-modal');
+        alert(`Поздравляем! Вы купили "${currentBuyingItem.name}".\nОбъект добавлен в раздел "Собственность".\n\nВнимание: введен налог на недвижимость — 75 DLC раз в 30 дней.`);
+        
+        if (location.hash.startsWith('house/')) {
+          router(); 
+        }
+        
+        currentBuyingItem = null;
+      } else {
+        alert("Ошибка: недостаточно средств!");
+      }
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('visible');
+    }
+
+    window.addEventListener('hashchange', router);
+    window.addEventListener('DOMContentLoaded', () => {
+      router();
+      updateWallet();
+    });
+
+  </script>
+</body>
+</html>
