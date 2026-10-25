@@ -169,7 +169,8 @@
     </nav>
     
     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-      <div class="user-profile" id="user-profile" onclick="openProfileModal()">
+      <!-- Кнопка входа / профиля -->
+      <div class="user-profile" id="user-profile" onclick="openNicknameModal()">
         <span class="avatar">👤</span>
         <span class="name" id="user-name-display">Войти</span>
       </div>
@@ -215,35 +216,39 @@
     <div id="my-properties-list" class="flats-grid" style="margin-top: 2rem;"></div>
   </main>
 
-  <!-- МОДАЛКИ -->
-  <div id="auth-modal" class="modal">
+  <!-- МОДАЛКА: ВВОД НИКНЕЙМА -->
+  <div id="nickname-modal" class="modal">
     <div class="modal-content">
-      <h2 id="auth-title">Вход в аккаунт</h2>
-      <input type="email" id="auth-email" class="modal-input" placeholder="Email">
-      <input type="password" id="auth-password" class="modal-input" placeholder="Пароль">
-      <input type="text" id="auth-nickname" class="modal-input" placeholder="Никнейм (для регистрации)" style="display: none;">
+      <h2>Вход в игру</h2>
+      <p>Введите ваш никнейм. Если вы здесь впервые — он будет создан.</p>
+      <input type="text" id="nickname-input" class="modal-input" placeholder="Ваш ник..." maxlength="20">
       <div class="modal-actions">
-        <button class="modal-btn cancel" onclick="closeModal('auth-modal')">Отмена</button>
-        <button class="modal-btn confirm" id="auth-submit-btn" onclick="submitAuth()">Войти</button>
-      </div>
-      <p style="margin-top: 1rem; font-size: 0.9rem;">
-        <span id="auth-switch-text">Нет аккаунта?</span> 
-        <a href="#" id="auth-switch-link" onclick="toggleAuthMode(event)" style="color: #2d5a4a; font-weight: bold;">Зарегистрироваться</a>
-      </p>
-    </div>
-  </div>
-
-  <div id="profile-modal" class="modal">
-    <div class="modal-content">
-      <h2>Личный кабинет</h2>
-      <p>Никнейм: <strong id="profile-nickname"></strong></p>
-      <div class="modal-actions">
-        <button class="modal-btn cancel" onclick="closeModal('profile-modal')">Закрыть</button>
-        <button class="modal-btn confirm" style="background:#ff4d4d;" onclick="logout()">Выйти из аккаунта</button>
+        <button class="modal-btn cancel" onclick="closeModal('nickname-modal')">Отмена</button>
+        <button class="modal-btn confirm" onclick="saveNickname()">Войти</button>
       </div>
     </div>
   </div>
 
+  <!-- МОДАЛКА: ПОПОЛНЕНИЕ -->
+  <div id="topup-modal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+      <h2>Пополнение кошелька</h2>
+      <p>Выберите пакет (в демо-версии бесплатно).</p>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.5rem;">
+        <button class="modal-btn confirm" style="background: #f0f0f0; color: #333; border: 2px solid #ddd; text-align: left; padding: 15px;" onclick="fakeTopup(100)">
+          <span>💵 100 DLC</span>
+        </button>
+        <button class="modal-btn confirm" style="background: #e0f2fe; color: #0369a1; border: 2px solid #bae6fd; text-align: left; padding: 15px;" onclick="fakeTopup(550)">
+          <span>💵 550 DLC <b style="color:#ff4d4d; font-size:0.8rem;">+10%</b></span>
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" onclick="closeModal('topup-modal')">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА: ПОКУПКА -->
   <div id="buy-modal" class="modal">
     <div class="modal-content">
       <h2 id="buy-title">Покупка</h2>
@@ -260,114 +265,63 @@
   </div>
 
   <script>
-    const API_URL = 'http://localhost:3000/api'; 
+    // ================= ЭКОНОМИКА И СОХРАНЕНИЕ =================
     let balance = 0;
     let myProperties = [];
     let playerNickname = '';
-    let token = localStorage.getItem('token');
     let currentBuyingItem = null;
-    let isRegisterMode = false;
 
-    // --- АВТОРИЗАЦИЯ ---
-    async function checkAuth() {
-      if (!token) {
-        document.getElementById('user-name-display').textContent = "Войти";
-        return;
-      }
-      try {
-        const res = await fetch(`${API_URL}/me`, { headers: { 'Authorization': token } });
-        if (res.ok) {
-          const data = await res.json();
-          playerNickname = data.nickname;
-          balance = data.balance;
-          myProperties = data.properties;
-          document.getElementById('user-name-display').textContent = playerNickname;
-          updateWallet();
-        } else { logout(); }
-      } catch (e) { console.error("Сервер не отвечает"); }
+    // Загрузка данных из памяти браузера
+    if (localStorage.getItem('dlc_balance')) balance = parseInt(localStorage.getItem('dlc_balance'));
+    if (localStorage.getItem('dlc_properties')) myProperties = JSON.parse(localStorage.getItem('dlc_properties'));
+    if (localStorage.getItem('dlc_nickname')) playerNickname = localStorage.getItem('dlc_nickname');
+
+    // Проверка, заходил ли игрок
+    if (playerNickname) {
+      document.getElementById('user-name-display').textContent = playerNickname;
+    } else {
+      // Если нет, показываем окно входа через секунду
+      setTimeout(() => document.getElementById('nickname-modal').classList.add('visible'), 500);
     }
 
-    function openProfileModal() {
-      if (!token) document.getElementById('auth-modal').classList.add('visible');
-      else {
-        document.getElementById('profile-nickname').textContent = playerNickname;
-        document.getElementById('profile-modal').classList.add('visible');
-      }
+    function saveData() {
+      localStorage.setItem('dlc_balance', balance);
+      localStorage.setItem('dlc_properties', JSON.stringify(myProperties));
+      localStorage.setItem('dlc_nickname', playerNickname);
     }
 
-    function toggleAuthMode(e) {
-      if(e) e.preventDefault();
-      isRegisterMode = !isRegisterMode;
-      document.getElementById('auth-title').textContent = isRegisterMode ? "Регистрация" : "Вход";
-      document.getElementById('auth-nickname').style.display = isRegisterMode ? "block" : "none";
-      document.getElementById('auth-submit-btn').textContent = isRegisterMode ? "Создать аккаунт" : "Войти";
-      document.getElementById('auth-switch-text').textContent = isRegisterMode ? "Уже есть аккаунт?" : "Нет аккаунта?";
-      document.getElementById('auth-switch-link').textContent = isRegisterMode ? "Войти" : "Зарегистрироваться";
+    function updateWallet() {
+      document.getElementById('wallet-balance').textContent = balance;
     }
 
-    async function submitAuth() {
-      const email = document.getElementById('auth-email').value;
-      const password = document.getElementById('auth-password').value;
-      const nickname = document.getElementById('auth-nickname').value;
+    function openNicknameModal() {
+      document.getElementById('nickname-input').value = playerNickname;
+      document.getElementById('nickname-modal').classList.add('visible');
+    }
 
-      if (!email || !password) return alert("Заполните email и пароль");
-      if (isRegisterMode && !nickname) return alert("Введите никнейм");
-
-      const endpoint = isRegisterMode ? '/register' : '/login';
+    function saveNickname() {
+      const input = document.getElementById('nickname-input').value.trim();
+      if (input.length < 2) return alert("Никнейм должен быть не короче 2 символов.");
       
-      try {
-        const res = await fetch(`${API_URL}${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, nickname })
-        });
-        const data = await res.json();
-
-        if (res.ok) {
-          if (isRegisterMode) {
-            alert("Аккаунт создан! Теперь войдите.");
-            toggleAuthMode();
-            document.getElementById('auth-password').value = '';
-          } else {
-            token = data.token;
-            localStorage.setItem('token', token);
-            playerNickname = data.user.nickname;
-            balance = data.user.balance;
-            myProperties = data.user.properties;
-            document.getElementById('user-name-display').textContent = playerNickname;
-            updateWallet();
-            closeModal('auth-modal');
-            alert("Вы вошли!");
-            router(); 
-          }
-        } else { alert(data.error || "Ошибка"); }
-      } catch (e) { alert("Сервер не отвечает. Убедитесь, что он запущен (node server.js)."); }
+      playerNickname = input;
+      document.getElementById('user-name-display').textContent = playerNickname;
+      saveData();
+      closeModal('nickname-modal');
     }
 
-    function logout() {
-      token = null;
-      localStorage.removeItem('token');
-      playerNickname = '';
-      balance = 0;
-      myProperties = [];
-      document.getElementById('user-name-display').textContent = "Войти";
+    function fakeTopup(amount) {
+      balance += amount;
       updateWallet();
-      closeModal('profile-modal');
-      router();
+      saveData();
+      closeModal('topup-modal');
+      alert(`Баланс пополнен на ${amount} DLC!`);
     }
 
-    async function saveProgressToServer() {
-      if (!token) return;
-      await fetch(`${API_URL}/update`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': token },
-        body: JSON.stringify({ balance, properties: myProperties, nickname: playerNickname })
-      });
-    }
+    function openTopupModal() { document.getElementById('topup-modal').classList.add('visible'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('visible'); }
+    function toggleBuyBtn() { document.getElementById('buy-confirm-btn').disabled = !document.getElementById('buy-agree').checked; }
 
-    function updateWallet() { document.getElementById('wallet-balance').textContent = balance; }
-
-    // --- ДАННЫЕ ---
+    // ================= ДАННЫЕ (КАРТА) =================
     function generateMurinoFlats(buildingId) {
       const flats = []; const conditions = [{ key: 'ruin', label: 'Руина', mult: 0.25 },{ key: 'damage', label: 'Требует ремонта', mult: 0.55 },{ key: 'bare', label: 'Без отделки', mult: 0.8 }];
       for (let i = 1; i <= 25; i++) {
@@ -378,21 +332,19 @@
     }
     function generateMytishchiFlats(buildingId) {
       const flats = [];
-      for (let i = 1; i <= 35; i++) { const floor = Math.ceil(i / 2); flats.push({ id: `${buildingId}-${i}`, number: i, floor, name: `Апартаменты ${i} (${floor} этаж)`, condition: 'Люкс', conditionKey: 'luxury', price: 1000, desc: `Панорамные окна, вид на море, умный дом.` }); }
+      for (let i = 1; i <= 35; i++) { const floor = Math.ceil(i / 2); flats.push({ id: `${buildingId}-${i}`, number: i, floor, name: `Апартаменты ${i} (${floor} этаж)`, condition: 'Люкс', conditionKey: 'luxury', price: 1000, desc: `Панорамные окна, вид на море.` }); }
       return flats;
     }
-    function generateEldzheevkaHouse(buildingId) { return [{ id: `${buildingId}-1`, number: 1, floor: 2, name: `Коттедж целиком`, condition: 'Элитный', conditionKey: 'elite', price: 1500, desc: `Полностью меблированный двухэтажный дом с участком, бассейном и гаражом.` }]; }
+    function generateEldzheevkaHouse(buildingId) { return [{ id: `${buildingId}-1`, number: 1, floor: 2, name: `Коттедж целиком`, condition: 'Элитный', conditionKey: 'elite', price: 1500, desc: `Дом с участком и бассейном.` }]; }
     function generateMolochnoeFlat(buildingId, type = 'house') {
-      let name, desc, price, condKey, condition;
-      if (type === 'house') { name = `Дом целиком`; desc = `Уютный деревенский дом с печкой.`; price = 300; condKey = 'farm'; condition = 'Деревенский'; }
-      else if (type === 'shop') { name = `Магазин «Таврия»`; desc = `Готовый бизнес!`; price = 800; condKey = 'business'; condition = 'Бизнес'; }
-      return [{ id: `${buildingId}-1`, number: 1, floor: 1, name, condition, conditionKey: condKey, price, desc }];
+      let name = type === 'house' ? `Дом целиком` : `Магазин`; let price = type === 'house' ? 300 : 800;
+      return [{ id: `${buildingId}-1`, number: 1, floor: 1, name, condition: 'Деревенский', conditionKey: 'farm', price, desc: `Уютный дом с печкой.` }];
     }
-    function generateChekushkinoHouse(buildingId) { return [{ id: `${buildingId}-1`, number: 1, floor: 2, name: `Каменный дом целиком`, condition: 'Винодельческий', conditionKey: 'wine', price: 1200, desc: `Аутентичный каменный дом.` }]; }
-    function generateDerevnyaHouse(buildingId) { return [{ id: `${buildingId}-1`, number: 1, floor: 2, name: `Деревянный дом целиком`, condition: 'Лесной', conditionKey: 'forest', price: 600, desc: `Уютный деревянный дом у реки.` }]; }
+    function generateChekushkinoHouse(buildingId) { return [{ id: `${buildingId}-1`, number: 1, floor: 2, name: `Каменный дом`, condition: 'Винодельческий', conditionKey: 'wine', price: 1200, desc: `Аутентичный каменный дом.` }]; }
+    function generateDerevnyaHouse(buildingId) { return [{ id: `${buildingId}-1`, number: 1, floor: 2, name: `Деревянный дом`, condition: 'Лесной', conditionKey: 'forest', price: 600, desc: `Уютный деревянный дом у реки.` }]; }
     function generateMilitaryBeds(buildingId) {
       const beds = [];
-      for (let i = 1; i <= 500; i++) { beds.push({ id: `${buildingId}-${i}`, number: i, floor: Math.ceil(i / 50), name: `Место №${i}`, condition: 'Казарменное', conditionKey: 'military', price: 50, desc: `Спальное место в казарме.` }); }
+      for (let i = 1; i <= 500; i++) { beds.push({ id: `${buildingId}-${i}`, number: i, floor: Math.ceil(i / 50), name: `Место №${i}`, condition: 'Казарменное', conditionKey: 'military', price: 50, desc: `Спальное место.` }); }
       return beds;
     }
 
@@ -428,16 +380,16 @@
       molochnoe: {
         name: 'Молочное', subtitle: 'Деревенское село.', theme: 'farm', img: 'molochnoe.jpg', buildingsCount: 5, generateFlats: generateMolochnoeFlat,
         zones: [
-          { id: 'f1', x: 15, y: 35, w: 12, h: 15, type: 'house' }, { id: 'f2', x: 45, y: 10, w: 12, h: 15, type: 'house' },
-          { id: 'f3', x: 72, y: 35, w: 12, h: 15, type: 'house' }, { id: 'f4', x: 29, y: 55, w: 12, h: 15, type: 'house' },
-          { id: 'f6', x: 40, y: 40, w: 15, h: 12, type: 'shop' }
+          { id: 'f1', x: 15, y: 35, w: 12, h: 15 }, { id: 'f2', x: 45, y: 10, w: 12, h: 15 },
+          { id: 'f3', x: 72, y: 35, w: 12, h: 15 }, { id: 'f4', x: 29, y: 55, w: 12, h: 15 },
+          { id: 'f6', x: 40, y: 40, w: 15, h: 12 }
         ],
         houses: [
           { id: 'f1', name: 'Жилой дом 1', desc: 'Дом', flats: generateMolochnoeFlat('f1', 'house') },
           { id: 'f2', name: 'Жилой дом 2', desc: 'Дом', flats: generateMolochnoeFlat('f2', 'house') },
           { id: 'f3', name: 'Жилой дом 3', desc: 'Дом', flats: generateMolochnoeFlat('f3', 'house') },
           { id: 'f4', name: 'Жилой дом 4', desc: 'Дом', flats: generateMolochnoeFlat('f4', 'house') },
-          { id: 'f6', name: 'Магазин «Таврия»', desc: 'Бизнес', flats: generateMolochnoeFlat('f6', 'shop') }
+          { id: 'f6', name: 'Магазин', desc: 'Бизнес', flats: generateMolochnoeFlat('f6', 'shop') }
         ]
       },
       chekushkino: {
@@ -467,13 +419,13 @@
     };
 
     const settlements = [
-      { id: 'murino', name: 'Мурино', coords: { x: 25, y: 30.5 }, description: 'Город-спутник, застроенный недостроенными высотками.', population: 25000 },
-      { id: 'mytishchi', name: 'Мытищи', coords: { x: 61, y: 15 }, description: 'Футуристический центр с небоскрёбами.', population: 150000 },
-      { id: 'military', name: 'Воинская часть', coords: { x: 86, y: 44 }, description: 'Закрытый военный городок.', population: 5000 },
-      { id: 'derevnya', name: 'Деревня', coords: { x: 93.5, y: 57 }, description: 'Тихая деревня с огородами.', population: 800 },
-      { id: 'molochnoe', name: 'Молочное', coords: { x: 42, y: 55 }, description: 'Фермерское село, известное сыроварнями.', population: 3000 },
-      { id: 'eldzheevka', name: 'Элджеевка', coords: { x: 68.5, y: 68 }, description: 'Живописное элитное село у реки.', population: 1500 },
-      { id: 'chekushkino', name: 'Чекушкино', coords: { x: 82.5, y: 84 }, description: 'Весёлое село с виноградниками.', population: 1200 }
+      { id: 'murino', name: 'Мурино', coords: { x: 25, y: 30.5 }, description: 'Город-спутник.', population: 25000 },
+      { id: 'mytishchi', name: 'Мытищи', coords: { x: 61, y: 15 }, description: 'Футуристический центр.', population: 150000 },
+      { id: 'military', name: 'Воинская часть', coords: { x: 86, y: 44 }, description: 'Военный городок.', population: 5000 },
+      { id: 'derevnya', name: 'Деревня', coords: { x: 93.5, y: 57 }, description: 'Тихая деревня.', population: 800 },
+      { id: 'molochnoe', name: 'Молочное', coords: { x: 42, y: 55 }, description: 'Фермерское село.', population: 3000 },
+      { id: 'eldzheevka', name: 'Элджеевка', coords: { x: 68.5, y: 68 }, description: 'Элитное село.', population: 1500 },
+      { id: 'chekushkino', name: 'Чекушкино', coords: { x: 82.5, y: 84 }, description: 'Весёлое село.', population: 1200 }
     ];
 
     // --- РЕНДЕР КАРТЫ ---
@@ -488,7 +440,7 @@
         
         hitbox.addEventListener('mouseenter', (e) => {
           const tooltip = document.getElementById('tooltip');
-          tooltip.innerHTML = `<strong>${s.name}</strong><br>${s.description}<br>${s.population} чел.`;
+          tooltip.innerHTML = `<strong>${s.name}</strong><br>${s.description}`;
           tooltip.classList.remove('hidden');
           tooltip.style.left = e.clientX + 15 + 'px';
           tooltip.style.top = e.clientY + 15 + 'px';
@@ -583,8 +535,9 @@
       });
     }
 
+    // --- ПОКУПКА ---
     function openBuyModal(id, name, price, cityName, houseName) {
-      if (!token) return alert("Войдите в аккаунт, чтобы покупать!");
+      if (!playerNickname) return alert("Сначала введите никнейм (нажмите на 'Войти' в шапке)!");
       if (balance < price) return alert(`Недостаточно DLC! Нужно ${price}, у вас ${balance}.`);
       
       currentBuyingItem = { id, name, price, cityName, houseName };
@@ -595,26 +548,23 @@
       document.getElementById('buy-modal').classList.add('visible');
     }
 
-    async function confirmPurchase() {
+    function confirmPurchase() {
       if (!currentBuyingItem) return;
       balance -= currentBuyingItem.price;
       myProperties.push(currentBuyingItem);
       
-      await saveProgressToServer();
       updateWallet();
+      saveData(); // Сохраняем в браузере
+      
       closeModal('buy-modal');
-      alert("Успешно куплено!");
+      alert("Успешно куплено! Объект добавлен в 'Собственность'.");
       if (location.hash.startsWith('house/')) router();
       currentBuyingItem = null;
     }
 
-    function toggleBuyBtn() { document.getElementById('buy-confirm-btn').disabled = !document.getElementById('buy-agree').checked; }
-    function openTopupModal() { alert("Здесь будет переход на бота Tribute для оплаты!"); }
-    function closeModal(id) { document.getElementById(id).classList.remove('visible'); }
-
     window.addEventListener('hashchange', router);
     window.addEventListener('DOMContentLoaded', () => {
-      checkAuth();
+      updateWallet();
       router();
     });
   </script>
